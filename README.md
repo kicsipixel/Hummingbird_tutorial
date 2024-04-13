@@ -243,7 +243,7 @@ Date: Sat, 13 Apr 2024 21:42:36 GMT
 Server: ParksOfPrague
 ```
 
-### Run our first Hummingbird server in a Docker container
+### Run the server in a Docker container
 
 ```shell
 $ docker build -t parksofprague . && docker run -d -p 8080:8080 parksofprague
