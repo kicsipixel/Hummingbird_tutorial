@@ -41,121 +41,223 @@ We will build a swift server running on SQLite database, which will store parks 
 ]
 ```
 
-## Step 1. - Init the project
+## Step 1. - Clone and configure the Hummingbird template
 
 ```shell
-mkdir parkAPI && cd $_
-swift package init --type executable
+$ curl -L https://raw.githubusercontent.com/hummingbird-project/template/main/scripts/download.sh | bash -s parks_of_prague
 ```
 
-This creates the backbones of our project. One of the most important file and initial point of our project is the  `Package.swift`, the Swift manifest file. [Here](https://theswiftdev.com/the-swift-package-manifest-file/) you can read more about it.
+Then,
 
-## Step 2. - Create the folder structure
-We need to follow a certain guidelines about folder structure, otherwise the compiler won't be able to handle our project. On the picture below, you can find the simplest structure, which follow the [Hummingbird template](https://github.com/hummingbird-project/template). 
+```shell
+$ ./configure.sh 
+```
+
+These creates the backbones and the most important files and folders of our project.
+
+## Step 2. - Review our template
+### Folder structure:
 
 ```shell
 .
+├── Dockerfile
 ├── Package.swift
 ├── README.md
-└── Sources
-    └── ParksOfPrague
-        ├── App.swift
-        └── Application+configure.swift
+├── Sources
+│   └── App
+│       ├── App.swift
+│       └── Application+build.swift
+├── Tests
+│   └── AppTests
+│       └── AppTests.swift
+├── configure.sh
+└── scripts
+    └── download.sh
 ```
 
-We will add the `Tests` folder later, when we will have something to test.
+### Files:
+- `Dockerfile`: is a text document that contains a set of commands to perform actions on a base image to create a new Docker image containing our Hummingbird application.\
 
-## Step 3. - Configure the server
+- `Package.swift`:  is one of the most important file and initial point of our project, the Swift manifest file. [Here](https://theswiftdev.com/the-swift-package-manifest-file/) you can read more about it.
+- `README.md`: is a markdown file containing information about the project.
+- `Sources/App/App.swift`: creates the Hummingbird application and ready for command line parameters (`--hostname`,  `--port` or `--logLevel`)
+- `Sources/App/Application+build.swift`: configures the Hummingbird application with middleware, routers, databases, etc.
+- `Test/AppTests/AppTests.swift`:  an initial test file with a simple test. 
+- `configure.sh`: Bash script to configure the default application template 
+- `scripts/download.sh`: Bash script to download the application template
 
-Before we are able to run our server, we need to add two packages to the `Package.swift` file:
+### `Package.swift`
 
-- [Hummingbird](https://github.com/hummingbird-project/hummingbird.git)
-- [Swift Argument Parser](https://github.com/apple/swift-argument-parser.git)
+It contains two packages:
+
+- [Hummingbird](https://github.com/hummingbird-project/hummingbird.git): Server side Swift framework 
+- [Swift Argument Parser](https://github.com/apple/swift-argument-parser.git):  library parses the command-line arguments
 
 ```swift
+// swift-tools-version:5.9
+// The swift-tools-version declares the minimum version of Swift required to build this package.
+
 import PackageDescription
 
 let package = Package(
     name: "ParksOfPrague",
-    platforms: [
-        .macOS(.v14)
+    platforms: [.macOS(.v14), .iOS(.v17), .tvOS(.v17)],
+    products: [
+        .executable(name: "App", targets: ["App"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/hummingbird-project/hummingbird.git", from: "2.0.0-beta.2"),
-        .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.3.0"),
+        .package(url: "https://github.com/hummingbird-project/hummingbird.git", from: "2.0.0-beta.1"),
+        .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.3.0")
     ],
     targets: [
-        .executableTarget(
-            name: "ParksOfPrague",
+        .executableTarget(name: "App",
             dependencies: [
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
                 .product(name: "Hummingbird", package: "hummingbird"),
             ],
+            path: "Sources/App",
             swiftSettings: [
-                .unsafeFlags(["-cross-module-optimization"], .when(configuration: .release)),
+                // Enable better optimizations when building in Release configuration. Despite the use of
+                // the `.unsafeFlags` construct required by SwiftPM, this flag is recommended for Release
+                // builds. See <https://github.com/swift-server/guides#building-for-production> for details.
+                .unsafeFlags(["-cross-module-optimization"], .when(configuration: .release))
             ]
         ),
+        .testTarget(name: "AppTests",
+            dependencies: [
+                .byName(name: "App"),
+                .product(name: "HummingbirdTesting", package: "hummingbird")
+            ],
+            path: "Tests/AppTests"
+        )
     ]
 )
 ```
 
-Using `.executableTarget` the `@main` will be the enrty point of our application and we can rename `main.swift` to `App.swift`. Paul Hudson wrote a [short article](https://www.hackingwithswift.com/swift/5.4/spm-executable-targets) about it. 
+### `Sources/App/App.swift`
+The `@main` will be the entry point of our application. 
 
-Define the hostname and port in the `App.swift`.
+Here we can declare the command-line arguments, the application will accept. 
+
+The following options are available:
+
+```shell
+-h, --hostname <hostname/IP address> // default: 127.0.0.1
+-p, --port <port>                   // default: 8080
+-l,  --logLeveler <log level>      // optional (trace, debug, info, notice, warning, error, critical)																			
+``` 
+
 
 ```swift
 import ArgumentParser
+import Hummingbird
+import Logging
 
 @main
-struct HummingbirdArguments: AsyncParsableCommand {
+struct App: AsyncParsableCommand, AppArguments {
     @Option(name: .shortAndLong)
     var hostname: String = "127.0.0.1"
 
     @Option(name: .shortAndLong)
     var port: Int = 8080
 
+    @Option(name: .shortAndLong)
+    var logLevel: Logger.Level?
+
     func run() async throws {
-        let app = buildApplication(
-            configuration: .init(
-                address: .hostname(self.hostname, port: self.port),
-                serverName: "Parks of Prague"
-            )
-        )
-        
+        let app = buildApplication(self)
         try await app.runService()
     }
 }
 ```
 
-  We need to use [`AsyncParsableCommand`](https://apple.github.io/swift-argument-parser/documentation/argumentparser/asyncparsablecommand/)protocol.
+### `Sources/App/Application+build.swift`
 
-One last thing remained before we can run our application is to define the `route` in the `Application+configuration.swift`.
+Using the command-line arguments from `App.swift` and `Router` we configure our application.
+
+If there are no no arguments, the app will use the default:
+- `127.0.0.1` as hostname, 
+- `8080` as port
+- `info` as log level
+
+There is only one `route` defined: `/health`. This gives you back a `STATUS 200 OK` message but you won’t see anything in your browser. 
 
 ```swift
 import Hummingbird
+import Logging
 
-func buildApplication(configuration: ApplicationConfiguration) -> some ApplicationProtocol {
-    // Router
+/// Application arguments protocol. We use a protocol so we can call
+/// `buildApplication` inside Tests as well as in the App executable. 
+/// Any variables added here also have to be added to `App` in App.swift and 
+/// `TestArguments` in AppTest.swift
+public protocol AppArguments {
+    var hostname: String { get }
+    var port: Int { get }
+    var logLevel: Logger.Level? { get }
+}
+
+public func buildApplication(_ arguments: some AppArguments) -> some ApplicationProtocol {
+    let logger = {
+        var logger = Logger(label: "ParksOfPrague")
+        logger.logLevel = arguments.logLevel ?? .info
+        return logger
+    }()
     let router = Router()
-    
-    router.get("/") { _, _ in
-        return  "The server is running...🚀"
+    // Add health route
+    router.get("/health") { _,_ -> HTTPResponse.Status in
+        return .ok
     }
-
-    // Application
     let app = Application(
         router: router,
-        configuration: configuration
+        configuration: .init(
+            address: .hostname(arguments.hostname, port: arguments.port),
+            serverName: "ParksOfPrague"
+        ),
+        logger: logger
     )
     return app
 }
 ```
 
-Run our first Hummingbird server:
+### Run our first Hummingbird server
+When you ran the `.configure.sh`, you could set the executable name:
 
+```shell
+Enter your executable name: [App] > 
 ```
-swift run ParksOfPrague
+
+Using that name, run the following command:
+
+```shell
+$ swift run App
 ```
+
+### Test our app
+The `-i` or `--include` flag of `curl` shows the HTTP response headers in the output. 
+
+```shell
+$ curl -i http://127.0.0.1:8080/health
+HTTP/1.1 200 OK
+Content-Length: 0
+Date: Sat, 13 Apr 2024 21:42:36 GMT
+Server: ParksOfPrague
+```
+
+### Run our first Hummingbird server in a Docker container
+
+```shell
+$ docker build -t parksofprague . && docker run -d -p 8080:8080 parksofprague
+```
+
+---
+---
+Updated to this point only...
+---
+
+
+
+---
+---
 
 
 ## Step 4. Create API response
