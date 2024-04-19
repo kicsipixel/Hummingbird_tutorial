@@ -1,11 +1,3 @@
-//
-//  ParksController.swift
-//
-//
-//  Created by Szabolcs Tóth on 06.04.2024.
-//  Copyright © 2024 Szabolcs Tóth. All rights reserved.
-//
-
 import FluentKit
 import Hummingbird
 import HummingbirdFluent

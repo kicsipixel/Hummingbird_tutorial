@@ -7,8 +7,6 @@ The tutorial text is below:
 
 # Park of Prague API - Server side Swift with Hummingbird 2
 
-**The [original article](https://medium.com/better-programming/park-api-server-side-swift-with-hummingbird-a9be304f22a5) was written in June 2023. However, since then, several changes have occurred, rendering the article less relevant(or not relevant at all) in its original state.**
-
 Server side Swift has been available since end of 2015. The idea was behind the development that you can use the same language for RESTful APIs, desktop and mobile applications. With the evolution of the Swift language, the different Swift web frameworks got more robust and complex. 
 
 That's why I was happy to read [Tib's excellent article](https://theswiftdev.com/beginners-guide-to-server-side-swift-using-the-hummingbird-framework) about a new HTTP server library written in Swift, [Hummingbird](https://github.com/hummingbird-project/hummingbird). I immediately liked the concept of modularity, so decided to create a tutorial to show its simplicity.
@@ -334,7 +332,7 @@ Inside the database, the data are organised by our `Park` model, which contains:
 	- `latitude`
 	- `longitude`
 
-Create a `Models` folder under `Sources` with a file name `Park.swift`.
+Create a `Models` folder under `Sources/App` with a file name `Park.swift`.
 
 ```shell
 .
@@ -342,12 +340,11 @@ Create a `Models` folder under `Sources` with a file name `Park.swift`.
 ├── Package.swift
 ├── README.md
 ├── Sources
-│   ├── App
-│   │   ├── App.swift
-│   │   └── Application+build.swift
-│   ├── Migrations
-│   └── Models
-│       └── Park.swift
+│   └── App
+│       ├── App.swift
+│       ├── Application+build.swift
+│       └── Models
+│           └── Park.swift
 ├── Tests
 │   └── AppTests
 │       └── AppTests.swift
@@ -401,7 +398,7 @@ extension Park: ResponseCodable, Codable {}
 
 ### Step 3.3 Create a database migration file 
 
-To represent our `Park` model in database, we need to create a migration file. For better organisation it is recommended to create `Migrations` folder under `Sources`.
+To represent our `Park` model in database, we need to create a migration file. For better organisation it is recommended to create `Migrations` folder under `Sources/App`.
 
 ```shell
 .
@@ -409,13 +406,13 @@ To represent our `Park` model in database, we need to create a migration file. F
 ├── Package.swift
 ├── README.md
 ├── Sources
-│   ├── App
-│   │   ├── App.swift
-│   │   └── Application+build.swift
-│   ├── Migrations
-│   │   └── CreateParkTableMigration.swift
-│   └── Models
-│       └── Park.swift
+│   └── App
+│       ├── App.swift
+│       ├── Application+build.swift
+│       ├── Migrations
+│       │   └── CreateParkTableMigration.swift
+│       └── Models
+│           └── Park.swift
 ├── Tests
 │   └── AppTests
 │       └── AppTests.swift
@@ -519,7 +516,7 @@ func buildApplication(configuration: ApplicationConfiguration) async throws -> s
 
 
 
-### Step 4.4 Use concurrency in `App.swift`
+### Step 3.4 Use concurrency in `App.swift`
 
 Call `let app = buildApplication` with `try await` as we have already added `async throws` to it.
 
@@ -547,25 +544,31 @@ struct HummingbirdArguments: AsyncParsableCommand {
 }
 ```
   
- ### Step 4.5 Create the park controller
+ ### Step 3.5 Create the park controller
  
- The `Controller` receives an input from the users, then processes the user's data with the help of `Model` and passes the results back. Add `ParksController.swift` to a new `Controllers` folder under `Source/ParksOfPrague`.
+ The `Controller` receives an input from the users, then processes the user's data with the help of `Model` and passes the results back. Add `ParksController.swift` to a new `Controllers` folder under `Source/App`.
  
  ```shell
- .
+.
+├── Dockerfile
 ├── Package.swift
 ├── README.md
 ├── Sources
-│   └── ParksOfPrague
+│   └── App
 │       ├── App.swift
-│       ├── Application+configure.swift
+│       ├── Application+build.swift
 │       ├── Controllers
 │       │   └── ParksController.swift
 │       ├── Migrations
 │       │   └── CreateParkTableMigration.swift
 │       └── Models
 │           └── Park.swift
-└── db.sqlite
+├── Tests
+│   └── AppTests
+│       └── AppTests.swift
+├── configure.sh
+└── scripts
+    └── download.sh
  ```
  
  #### GET - all parks
@@ -663,34 +666,14 @@ Delete park with specified id: `.delete(":id", use: deletePark)`
 ```
 
 
-Our final folder structure looks like this:
-
-```shell
-.
-├── Package.resolved
-├── Package.swift
-├── README.md
-├── Sources
-│   └── ParksOfPrague
-│       ├── App.swift
-│       ├── Application+configure.swift
-│       ├── Controllers
-│       │   └── ParksController.swift
-│       ├── Migrations
-│       │   └── CreateParkTableMigration.swift
-│       └── Models
-│           └── Park.swift
-└── db.sqlite
-```
-
-### Step 4.5 Add `ParksController` to `Application+configure`
+### Step 3.6 Add `ParksController` to `Application+configure`
 Above `var app = Application` add the following:
 
 ```swift
     // Add controller
     ParksController(fluent: fluent).addRoutes(to: router.group("api/v1/parks"))
 ```
-### Step 5: Run the API server:
+### Step 4: Run the API server:
 `swift run parkAPI`
 
 You can reach the server on: `http://127.0.0.1:8080`
@@ -698,6 +681,7 @@ You can reach the server on: `http://127.0.0.1:8080`
 Your API endpoint will be on:  `http://127.0.0.1:8080/api/v1/parks`
 
 ### Summary
-I was impressed how easily and quickly I could build a working API server using [Hummingbird](https://github.com/hummingbird-project/hummingbird). 
+It is very impressive how easily and quickly we could build a working API server using [Hummingbird](https://github.com/hummingbird-project/hummingbird).
 
-Building and running the project took very minimal time comparing to Vapor. I highly recommend to try Hummingbird project in case you want something light and modular on Server side Swift.
+In case you would like to check a Todo app with [PostgresNIO](https://github.com/vapor/postgres-nio), check it [here](https://docs.hummingbird.codes/2.0/tutorials/todos/).
+
