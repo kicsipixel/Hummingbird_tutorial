@@ -249,27 +249,27 @@ Server: ParksOfPrague
 $ docker build -t parksofprague . && docker run -d -p 8080:8080 parksofprague
 ```
 
----
----
-Updated to this point only...
----
+### Add “/“ route to `Application+build.swift`
+To make more visible that our server runs, we can add root `route` to the `buildApplication` function: 
+
+```swift
+ // Add / route
+    router.get("/") { _,_ in
+    return "Hello, World! 🌍"
+    }
+```
 
 
-
----
----
-
-
-## Step 4. Create API response
+## Step 3. Create API response
 Our server will be accessible on the following routes, using different [HTTP methods](https://www.freecodecamp.org/news/http-request-methods-explained/).
 
-- `GET` - `http://hostname/api/v1/parks`: Lists all the parks in the database
-- `GET` - `http://hostname/api/v1/parks/:id`: Shows a single park with given id
-- `POST` - `http://hostname/api/v1/parks`: Creates a new park
-- `PATCH` - `http://hostname/api/v1/parks/:id`: Updates the park with the given id
-- `DELETE` - `http://hostname/api/v1/parks/:id`: Removes the park with id from database
+- `GET` - `http://127.0.0.1:8080/api/v1/parks`: Lists all the parks in the database
+- `GET` - `http://127.0.0.1:8080/api/v1/parks/:id`: Shows a single park with given id
+- `POST` - `http://127.0.0.1:8080/api/v1/parks`: Creates a new park
+- `PUT` - `http://127.0.0.1:8080/api/v1/parks/:id`: Updates the park with the given id
+- `DELETE` - `http://127.0.0.1:8080/api/v1/parks/:id`: Removes the park with id from database
 
-### Step 4.1 Add database dependency
+### Step 3.1 Add database dependency
 
 Our server will use SQLite database to store all data, so we need to add two database dependencies:
 - [Fluent driver for SQLite](https://github.com/vapor/fluent-sqlite-driver.git)
@@ -280,57 +280,80 @@ to our manifest file. This will allow the server to communicate to the database.
 The updated `Package.swift` file will look like this:
 
 ```swift
+// swift-tools-version:5.9
+// The swift-tools-version declares the minimum version of Swift required to build this package.
+
 import PackageDescription
 
 let package = Package(
-    name: "ParksOfPrague",
-    platforms: [
-        .macOS(.v14)
+    name: "parks_of_prague",
+    platforms: [.macOS(.v14), .iOS(.v17), .tvOS(.v17)],
+    products: [
+        .executable(name: "App", targets: ["App"]),
     ],
     dependencies: [
         .package(url: "https://github.com/hummingbird-project/hummingbird.git", from: "2.0.0-beta.2"),
         .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.3.0"),
-        // Database dependencies 
+        // Database dependencies
         .package(url: "https://github.com/vapor/fluent-sqlite-driver.git", from: "4.6.0"),
         .package(url: "https://github.com/hummingbird-project/hummingbird-fluent.git", from: "2.0.0-beta.1")
     ],
     targets: [
-        .executableTarget(
-            name: "ParksOfPrague",
-            dependencies: [
-                .product(name: "ArgumentParser", package: "swift-argument-parser"),
-                .product(name: "Hummingbird", package: "hummingbird"),
-                // Database dependencies 
-                .product(name: "FluentSQLiteDriver", package: "fluent-sqlite-driver"),
-                .product(name: "HummingbirdFluent", package: "hummingbird-fluent")
-            ],
-            swiftSettings: [
-                .unsafeFlags(["-cross-module-optimization"], .when(configuration: .release)),
-            ]
-        ),
+        .executableTarget(name: "App",
+                          dependencies: [
+                            .product(name: "ArgumentParser", package: "swift-argument-parser"),
+                            .product(name: "Hummingbird", package: "hummingbird"),
+                            // Database dependencies
+                            .product(name: "FluentSQLiteDriver", package: "fluent-sqlite-driver"),
+                            .product(name: "HummingbirdFluent", package: "hummingbird-fluent")
+                            
+                          ],
+                          path: "Sources/App",
+                          swiftSettings: [
+                            // Enable better optimizations when building in Release configuration. Despite the use of
+                            // the `.unsafeFlags` construct required by SwiftPM, this flag is recommended for Release
+                            // builds. See <https://github.com/swift-server/guides#building-for-production> for details.
+                            .unsafeFlags(["-cross-module-optimization"], .when(configuration: .release))
+                          ]
+                         ),
+        .testTarget(name: "AppTests",
+                    dependencies: [
+                        .byName(name: "App"),
+                        .product(name: "HummingbirdTesting", package: "hummingbird")
+                    ],
+                    path: "Tests/AppTests"
+                   )
     ]
 )
 ```
 
-### Step 4.2 Add `Park` model
+### Step 3.2 Add `Park` model
 Inside the database, the data are organised by our `Park` model, which contains:
 - `name`
 - `Coordinates`
 	- `latitude`
 	- `longitude`
 
-Create a `Models` folder under `Sources/ParksOfPrague` 
+Create a `Models` folder under `Sources` with a file name `Park.swift`.
 
 ```shell
 .
+├── Dockerfile
 ├── Package.swift
 ├── README.md
-└── Sources
-   └── ParksOfPrague
-       ├── App.swift
-       ├── Application+configure.swift
-       └── Models
-           └── Park.swift
+├── Sources
+│   ├── App
+│   │   ├── App.swift
+│   │   └── Application+build.swift
+│   ├── Migrations
+│   └── Models
+│       └── Park.swift
+├── Tests
+│   └── AppTests
+│       └── AppTests.swift
+├── configure.sh
+└── scripts
+    └── download.sh
 ```
 
 Add `Park.swift` file:
@@ -376,25 +399,32 @@ extension Park: ResponseCodable, Codable {}
 
 `ResponseEncodable` protocol is all about making your Swift types work nicely with HTTP responses.
 
-### Step 4.3 Create a database migration file 
+### Step 3.3 Create a database migration file 
 
-To represent our `Park` model in database, we need to create a migration file. For better organisation it is recommended to create `Migrations` folder under `Sources/ParksOfPrague`.
+To represent our `Park` model in database, we need to create a migration file. For better organisation it is recommended to create `Migrations` folder under `Sources`.
 
 ```shell
 .
+├── Dockerfile
 ├── Package.swift
 ├── README.md
-└──  Sources
-   └── ParksOfPrague
-       ├── App.swift
-       ├── Application+configure.swift
-       ├── Migrations
-       │   └── CreateParkTableMigration.swift
-       └── Models
-           └── Park.swift
+├── Sources
+│   ├── App
+│   │   ├── App.swift
+│   │   └── Application+build.swift
+│   ├── Migrations
+│   │   └── CreateParkTableMigration.swift
+│   └── Models
+│       └── Park.swift
+├── Tests
+│   └── AppTests
+│       └── AppTests.swift
+├── configure.sh
+└── scripts
+    └── download.sh
 ```
  
- Add `CreateParkTableMigration.swift` file: 
+ Add to the `CreateParkTableMigration.swift` file: 
  
 ```swift
 import FluentKit
@@ -417,9 +447,9 @@ struct CreateParkTableMigration: AsyncMigration {
 ```
  
 
-### Step 4.4 Call database migration
+### Step 3.4 Call database migration
 
-In our `Application+configure.swift` import the following libraries:
+In our `Application+build.swift` file import the following libraries:
 -  FluentSQLiteDriver
 -  HummingbirdFluent
 
