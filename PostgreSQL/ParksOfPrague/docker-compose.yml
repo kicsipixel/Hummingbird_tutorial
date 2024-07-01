@@ -1,0 +1,13 @@
+x-shared_environment:
+  LOG_LEVEL: ${LOG_LEVEL:-debug}
+services:
+  db:
+    image: postgres:16-alpine
+    volumes:
+      - db_data:/var/lib/postgresql/data/pgdata
+    env_file:
+      - .env
+    ports:
+      - 5432:5432
+volumes:
+  db_data:
