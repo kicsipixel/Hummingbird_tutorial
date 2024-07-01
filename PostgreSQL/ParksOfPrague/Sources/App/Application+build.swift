@@ -36,17 +36,18 @@ public func buildApplication(_ arguments: some AppArguments) async throws -> som
     let env = try await Environment.dotEnv()
     
     // Configure database
-    let postgreSQLConfig = SQLPostgresConfiguration(hostname: "localhost",
+    let postgreSQLConfig = SQLPostgresConfiguration(hostname: env.get("DATABASE_HOST") ?? "localhost",
                                                     port: env.get("DATABASE_PORT").flatMap(Int.init(_:)) ?? SQLPostgresConfiguration.ianaPortNumber,
                                                     username: env.get("DATABASE_USERNAME") ?? "username",
                                                     password: env.get("DATABASE_PASSWORD") ?? "password",
                                                     database: "prague-parks",
-                                                    tls: .disable)
+                                                    tls: .prefer(try .init(configuration: .clientDefault)))
     
     fluent.databases.use(.postgres(configuration: postgreSQLConfig, sqlLogLevel: .warning), as: .psql)
     
     await fluent.migrations.add(CreateParkTableMigration())
     
+    // Migration
     try await fluent.migrate()
     
     // Add controller
