@@ -1,2 +1,5 @@
 # Parks Of Prague
-Sample project for a tutorial.
+
+Sample project using SQLite database.
+
+[RapidAPI](https://paw.cloud/) file attached for faster testing.

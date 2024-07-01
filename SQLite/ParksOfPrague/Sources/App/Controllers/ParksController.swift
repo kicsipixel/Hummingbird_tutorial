@@ -40,8 +40,10 @@ struct ParksController<Context: RequestContext> {
     //    --header 'Content-Type: application/json' \
     //    --data '{
     //        "name" : "Stromovka",
-    //        "latitude" : 50.105848999999999,
-    //        "longitude": 14.413999
+    //        "coordinates": {
+    //          "latitude" : 50.105848999999999,
+    //          "longitude": 14.413999
+    //        }
     //    }'
     //
     @Sendable func create(_ request: Request, context: Context) async throws -> Park {
@@ -57,9 +59,11 @@ struct ParksController<Context: RequestContext> {
     //    --header 'Content-Type: application/json' \
     //    --data '   {
     //         "name" : "Stromovka Park",
-    //                "latitude" : 50.105848999999999,
+    //         "coordinates": {
+    //            "latitude" : 50.105848999999999,
     //            "longitude": 14.413999
-    //           }'
+    //         }
+    //     }'
     //
     @Sendable func update(_ request: Request, context: Context) async throws -> HTTPResponse.Status {
         let id = try context.parameters.require("id", as: UUID.self)
