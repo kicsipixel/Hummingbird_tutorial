@@ -40,7 +40,7 @@ public func buildApplication(_ arguments: some AppArguments) async throws -> som
                                                     port: env.get("DATABASE_PORT").flatMap(Int.init(_:)) ?? SQLPostgresConfiguration.ianaPortNumber,
                                                     username: env.get("DATABASE_USERNAME") ?? "username",
                                                     password: env.get("DATABASE_PASSWORD") ?? "password",
-                                                    database: "prague-parks",
+                                                    database: env.get("DATABASE_NAME") ?? "db",
                                                     tls: .prefer(try .init(configuration: .clientDefault)))
     
     fluent.databases.use(.postgres(configuration: postgreSQLConfig, sqlLogLevel: .warning), as: .psql)

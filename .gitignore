@@ -1,6 +1,6 @@
 .DS_Store
 **/.build
-**/.swiftpm
+**/.swiftpm/xcode
 /.devContainer
 /Packages
 /*.xcodeproj
@@ -8,3 +8,5 @@ xcuserdata/
 **/.vscode/*
 !/.vscode/hummingbird.code-snippets
 **/.env
+/PostgreSQL/ParksOfPrague/.swiftpm/xcode/package.xcworkspace/xcuserdata/szabolcs.xcuserdatad/UserInterfaceState.xcuserstate
+/PostgreSQL/ParksOfPrague/.swiftpm/xcode/package.xcworkspace/xcuserdata/szabolcs.xcuserdatad/UserInterfaceState.xcuserstate
